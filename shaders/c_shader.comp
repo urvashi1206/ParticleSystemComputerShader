@@ -1,0 +1,97 @@
+#version 430 compatibility
+
+uniform float deltaT;
+uniform vec3 minPos;
+uniform vec3 maxPos; 
+
+uniform vec3 originPos;
+uniform float radius;
+uniform vec3 wireFramePos;
+
+layout (std430, binding = 4) buffer Pos
+{
+	vec4 Positions [ ];
+};
+
+layout (std430, binding = 5) buffer Dir
+{
+	vec4 Directions [ ];
+};
+
+layout (std430, binding = 6) buffer Col 
+{
+	vec4 Colors [ ];
+};
+
+layout (std430, binding = 7) buffer Speed 
+{
+	float Speeds [ ];
+};
+
+layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+
+void main()
+{
+	const vec3 G = vec3 (0.0f, -9.8f, 0.0f);
+	uint g_id = gl_GlobalInvocationID.x;
+
+	vec3 pos = Positions[g_id].xyz;
+	vec3 dir = Directions[g_id].xyz;
+	float speed = Speeds[g_id];
+
+	pos += dir * speed * deltaT;
+
+	if(pos.x <minPos.x) 
+	{
+		pos.x = minPos.x; 
+		dir.x = abs(dir.x);
+	}
+	else if(pos.x > maxPos.x) 
+	{
+		pos.x = maxPos.x; 
+		dir.x = -abs(dir.x);
+	}
+
+	if(pos.y <minPos.y) 
+	{
+		pos.y = minPos.y; 
+		dir.y = abs(dir.y);
+	}
+	else if(pos.y > maxPos.y) 
+	{
+		pos.y = maxPos.y; 
+		dir.y = -abs(dir.y);
+	}
+
+	if(pos.z <minPos.z) 
+	{
+		pos.z = minPos.z; 
+		dir.z = abs(dir.z);
+	}
+	else if(pos.z > maxPos.z) 
+	{
+		pos.z = maxPos.z; 
+		dir.z = -abs(dir.z);
+	}
+
+	normalize(dir);
+
+	Positions[g_id].xyz = pos;
+	Directions[g_id].xyz = dir; 
+
+
+	vec3 D = normalize(Positions[g_id].xyz - originPos); // Direction from origin to particle
+    vec3 L = originPos - wireFramePos;
+    float A = dot(D, D);
+    float B = 2.0 * dot(D, L);
+    float C = dot(L, L) - (radius * radius);
+    float discriminant = B * B - 4.0 * A * C;
+    
+    if (discriminant >= 0.0) {
+        Colors[g_id] = vec4(0.0, 0.8, 0.9, 1.0); // Cyan for intersection
+    } else {
+        Colors[g_id] = vec4(0.0, 0.0, 0.5, 1.0); // Dark blue as default
+    }
+}
+
